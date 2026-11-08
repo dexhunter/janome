@@ -1,0 +1,28 @@
+{
+  "targets": [
+    {
+      "upstream_repo": "mocobeta/janome",
+      "head_sha": "e7a07d0dd77fbef87c856de021e66139332e0a1d",
+      "file": "src/janome/fst.py",
+      "function": "Matcher._run",
+      "native_test_cmd": "uv run pytest tests/test_fst.py::TestFST::test_matcher_cache",
+      "bench_cmd": "uv run python osspr-intake/harness/matcher_run/bench.py",
+      "baseline_median_ms": 155.0439,
+      "baseline_noise_pct": 2.67,
+      "tests_pass_on_baseline": true,
+      "notes": "On a tokenize of about 4000 distinct dictionary headwords, cProfile shows Matcher._run as the largest self-time cost on the lookup path: about 0.26s of 1.27s, across 32664 calls. Even on repeated text, where the arc cache is hot, it is still about 0.21s of self time. The time is the pure-Python common-prefix walk. Each call probes every prefix from 8 bytes downward in an OrderedDict, and on a hit takes a lock, deletes that entry, and stores a fresh copy of the output set. The walk then steps arc by arc and builds outputs with bytes concatenation. A prefix index that does not slice and copy on every byte, plus fewer copies of the output set, can return the same set of outputs with less work."
+    },
+    {
+      "upstream_repo": "mocobeta/janome",
+      "head_sha": "e7a07d0dd77fbef87c856de021e66139332e0a1d",
+      "file": "src/janome/fst.py",
+      "function": "Matcher.next_arc",
+      "native_test_cmd": "uv run pytest tests/test_fst.py::TestFST::test_common_prefix_match",
+      "bench_cmd": "uv run python osspr-intake/harness/next_arc/bench.py",
+      "baseline_median_ms": 194.5989,
+      "baseline_noise_pct": 2.99,
+      "tests_pass_on_baseline": true,
+      "notes": "Matcher._run calls next_arc once per arc. On repeated text the 4096-slot cache absorbs this, but on the same varied tokenize the cache sits at its cap and next_arc itself shows about 0.15s of self time across 141715 calls, with far more misses than the cache can hold. Each miss reads a flag byte, several struct integers, and output slices from the compiled FST and returns a new 6-tuple. Parsing those fields with fewer allocations, or keeping a denser decoded form of the arcs, would return the same tuples. The benchmark cycles more distinct arc addresses than the cache, so it measures that miss path."
+    }
+  ]
+}
